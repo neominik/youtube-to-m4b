@@ -11,6 +11,7 @@
 - 🧭 Preserves and combines chapters across all videos in a playlist
 - ⚙️ Configurable audio quality (64kbps-256kbps)
 - 📚 Outputs M4B audiobook format
+- 🖼️ Embeds `cover.jpeg` automatically when present in the project root
 - 💻 Interactive mode or direct command execution
 - 📊 Final conversion report with duration, chapter count, and bitrate
 
@@ -81,3 +82,8 @@ chmod +x youtube-to-m4b.sh
 - Each video's chapters are offset and appended so the final book keeps the full chapter list in order
 - If a video has no chapter data, the script creates a fallback chapter for that entry
 - The final verification step checks both total duration and chapter count before reporting success
+
+## Cover Art
+
+- Add a `cover.jpeg` file beside `youtube-to-m4b.sh` to embed it as the audiobook cover
+- The script keeps converting normally when no cover file is present

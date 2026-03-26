@@ -104,6 +104,10 @@ require_command python3
 
 bitrate=$(get_bitrate "$quality")
 output_file="${output_name}.m4b"
+cover_file=""
+if [[ -f "cover.jpeg" ]]; then
+  cover_file="cover.jpeg"
+fi
 temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/youtube-to-m4b.XXXXXX")
 metadata_json="$temp_dir/metadata.json"
 downloads_list="$temp_dir/downloads.txt"
@@ -114,6 +118,9 @@ echo "Starting conversion:"
 echo "  URL: $url"
 echo "  Quality: Level $quality ($bitrate)"
 echo "  Output: $output_file"
+if [[ -n "$cover_file" ]]; then
+  echo "  Cover: $cover_file"
+fi
 echo ""
 
 echo "Fetching metadata from YouTube..."
@@ -258,17 +265,41 @@ done
 
 metadata_input_index=$input_index
 
-ffmpeg -y \
-       "${ffmpeg_inputs[@]}" \
-       -i "$ffmetadata_file" \
-       -filter_complex "${concat_streams}concat=n=${#audio_files[@]}:v=0:a=1[aout]" \
-       -map "[aout]" \
-       -map_metadata "$metadata_input_index" \
-       -map_chapters "$metadata_input_index" \
-       -c:a aac -b:a "$bitrate" \
-       -movflags +faststart \
-       -vn -dn \
-       "$output_file"
+ffmpeg_command=(
+  ffmpeg -y
+  "${ffmpeg_inputs[@]}"
+  -i "$ffmetadata_file"
+)
+
+if [[ -n "$cover_file" ]]; then
+  ffmpeg_command+=( -i "$cover_file" )
+fi
+
+ffmpeg_command+=(
+  -filter_complex "${concat_streams}concat=n=${#audio_files[@]}:v=0:a=1[aout]"
+  -map "[aout]"
+  -map_metadata "$metadata_input_index"
+  -map_chapters "$metadata_input_index"
+  -c:a aac -b:a "$bitrate"
+)
+
+if [[ -n "$cover_file" ]]; then
+  ffmpeg_command+=(
+    -map "$((metadata_input_index + 1)):v:0"
+    -c:v mjpeg
+    -disposition:v:0 attached_pic
+  )
+else
+  ffmpeg_command+=( -vn )
+fi
+
+ffmpeg_command+=(
+  -dn
+  -movflags +faststart
+  "$output_file"
+)
+
+"${ffmpeg_command[@]}"
 
 echo "Verifying output..."
 verification_json=$(ffprobe -v error -print_format json -show_entries format=duration -show_chapters "$output_file")
